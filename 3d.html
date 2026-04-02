@@ -1,0 +1,1268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MetalPrint Studio — 3D Print Analyser</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&family=Syne:wght@400;500;600;700;800&display=swap');
+
+  :root {
+    --bg: #0d0f12;
+    --bg2: #131619;
+    --bg3: #1a1e23;
+    --bg4: #21262d;
+    --border: #2a2f38;
+    --border2: #363d48;
+    --text: #e2e8f0;
+    --text2: #8892a4;
+    --text3: #4a5568;
+    --accent: #00d4ff;
+    --accent2: #0099bb;
+    --red: #ff4757;
+    --orange: #ff9f43;
+    --green: #2ecc71;
+    --green2: #27ae60;
+    --purple: #a78bfa;
+    --yellow: #ffd32a;
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'Syne', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font-family: var(--mono); }
+
+  /* ── TOP BAR ── */
+  #topbar {
+    height: 42px; background: var(--bg2); border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; padding: 0 14px; gap: 0; position: relative; z-index: 10;
+  }
+  .logo { font-family: var(--sans); font-weight: 800; font-size: 14px; color: var(--accent); letter-spacing: -0.5px; margin-right: 20px; }
+  .logo span { color: var(--text2); font-weight: 400; }
+  .menu-items { display: flex; gap: 0; }
+  .mi { font-size: 11px; color: var(--text2); padding: 0 11px; height: 42px; display: flex; align-items: center; cursor: pointer; border-right: 1px solid var(--border); }
+  .mi:hover { color: var(--text); background: var(--bg3); }
+  .spacer { flex: 1; }
+  .topbadge { font-size: 10px; padding: 3px 9px; border-radius: 3px; margin-left: 8px; }
+  .tb-blue { background: rgba(0,212,255,.15); color: var(--accent); border: 1px solid rgba(0,212,255,.3); }
+  .tb-green { background: rgba(46,204,113,.12); color: var(--green); border: 1px solid rgba(46,204,113,.3); }
+  .toolbar-sep { width: 1px; height: 24px; background: var(--border); margin: 0 8px; }
+
+  /* ── LAYOUT ── */
+  #layout { display: flex; height: calc(100vh - 42px); }
+
+  /* ── LEFT PANEL ── */
+  #left {
+    width: 256px; min-width: 256px; background: var(--bg2);
+    border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden;
+  }
+  .panel-section { border-bottom: 1px solid var(--border); padding: 10px 12px; }
+  .ps-title {
+    font-size: 9px; font-weight: 600; letter-spacing: 1.2px; text-transform: uppercase;
+    color: var(--text3); margin-bottom: 8px; display: flex; align-items: center; gap: 6px;
+  }
+  .ps-title::after { content:''; flex:1; height:1px; background:var(--border); }
+
+  #prompt-area textarea {
+    width: 100%; background: var(--bg3); border: 1px solid var(--border2); border-radius: 4px;
+    color: var(--text); font-family: var(--mono); font-size: 11px; padding: 8px 10px; resize: none; height: 58px;
+    outline: none; transition: border .2s;
+  }
+  #prompt-area textarea:focus { border-color: var(--accent2); }
+  #gen-btn {
+    width: 100%; margin-top: 7px; padding: 8px; font-size: 11px; font-family: var(--mono); font-weight: 600;
+    background: var(--accent); color: #000; border: none; border-radius: 4px; cursor: pointer;
+    letter-spacing: .5px; transition: background .2s;
+  }
+  #gen-btn:hover { background: #33dcff; }
+  #gen-btn:active { transform: scale(.98); }
+  .quick-row { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 7px; }
+  .qp {
+    font-size: 9px; padding: 3px 7px; border: 1px solid var(--border2); border-radius: 3px;
+    cursor: pointer; color: var(--text2); background: var(--bg3); transition: all .15s;
+  }
+  .qp:hover { color: var(--accent); border-color: var(--accent2); }
+
+  /* sliders */
+  .ctrl-group { display: flex; flex-direction: column; gap: 5px; }
+  .cr { display: flex; align-items: center; gap: 6px; }
+  .cr-lbl { font-size: 10px; width: 48px; flex-shrink: 0; }
+  .cr-lbl.x { color: #ff6b6b; } .cr-lbl.y { color: #6bcb77; } .cr-lbl.z { color: #4dc9f6; }
+  .cr input[type=range] {
+    flex: 1; height: 3px; -webkit-appearance: none; background: var(--bg4);
+    border-radius: 2px; outline: none; cursor: pointer;
+  }
+  .cr input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 12px; height: 12px; border-radius: 50%;
+    background: var(--accent); cursor: pointer; border: 2px solid var(--bg2);
+  }
+  .cr-val { font-size: 10px; color: var(--text2); min-width: 36px; text-align: right; }
+
+  /* view mode buttons */
+  .vmode-row { display: flex; gap: 4px; flex-wrap: wrap; }
+  .vm {
+    font-size: 9px; padding: 4px 8px; border: 1px solid var(--border2); border-radius: 3px;
+    cursor: pointer; color: var(--text2); background: var(--bg3); transition: all .15s; font-family: var(--mono);
+  }
+  .vm:hover { color: var(--text); border-color: var(--border2); }
+  .vm.on { background: var(--accent); color: #000; border-color: var(--accent); font-weight: 600; }
+
+  /* metrics */
+  .metric-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .metric {
+    background: var(--bg3); border: 1px solid var(--border); border-radius: 4px;
+    padding: 8px 10px;
+  }
+  .mv { font-size: 18px; font-weight: 600; color: var(--text); }
+  .ml { font-size: 9px; color: var(--text3); margin-top: 1px; letter-spacing: .3px; }
+  .mv.red { color: var(--red); } .mv.orange { color: var(--orange); } .mv.green { color: var(--green); } .mv.accent { color: var(--accent); }
+
+  /* risk bar */
+  .riskbar { height: 5px; background: var(--bg4); border-radius: 3px; margin: 7px 0 3px; overflow: hidden; }
+  .riskfill { height: 100%; border-radius: 3px; transition: width .6s cubic-bezier(.4,0,.2,1); }
+  .risk-labels { display: flex; justify-content: space-between; font-size: 9px; color: var(--text3); }
+
+  /* orient grid */
+  .og { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin-top: 4px; }
+  .ob {
+    padding: 5px 3px; border: 1px solid var(--border); border-radius: 3px; cursor: pointer;
+    text-align: center; background: var(--bg3); transition: all .15s;
+  }
+  .ob:hover { border-color: var(--border2); }
+  .ob.best { border-color: var(--green2); background: rgba(46,204,113,.08); }
+  .ob.active { border-color: var(--accent); background: rgba(0,212,255,.08); }
+  .ob-v { font-size: 11px; font-weight: 600; color: var(--text); }
+  .ob-l { font-size: 8px; color: var(--text3); margin-top: 1px; }
+  .ob.best .ob-v { color: var(--green); }
+  .ob.active .ob-v { color: var(--accent); }
+
+  .apply-btn {
+    width: 100%; margin-top: 6px; padding: 6px; font-size: 10px; font-family: var(--mono);
+    background: transparent; color: var(--green); border: 1px solid var(--green2);
+    border-radius: 3px; cursor: pointer; transition: all .15s;
+  }
+  .apply-btn:hover { background: rgba(46,204,113,.1); }
+
+  /* support type selector */
+  .sup-types { display: flex; gap: 4px; margin-top: 4px; }
+  .st-btn {
+    flex: 1; font-size: 9px; padding: 5px 3px; border: 1px solid var(--border2); border-radius: 3px;
+    cursor: pointer; color: var(--text2); background: var(--bg3); text-align: center; transition: all .15s;
+    font-family: var(--mono);
+  }
+  .st-btn:hover { color: var(--text); }
+  .st-btn.on { border-color: var(--green2); color: var(--green); background: rgba(46,204,113,.08); }
+
+  /* tip box */
+  #tip-box { font-size: 10px; color: var(--text2); line-height: 1.7; }
+  #tip-box .tip-line { display: flex; gap: 6px; margin-bottom: 5px; }
+  #tip-box .tip-icon { color: var(--accent); flex-shrink: 0; }
+
+  #left-scroll { flex: 1; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+
+  /* ── CANVAS AREA ── */
+  #center { flex: 1; display: flex; flex-direction: column; position: relative; background: var(--bg); }
+
+  /* toolbar above canvas */
+  #canvas-toolbar {
+    height: 36px; background: var(--bg2); border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; padding: 0 12px; gap: 6px;
+  }
+  .ctb { font-size: 9px; padding: 3px 9px; border: 1px solid var(--border2); border-radius: 3px; cursor: pointer; color: var(--text2); background: var(--bg3); font-family: var(--mono); transition: all .15s; }
+  .ctb:hover { color: var(--text); border-color: var(--accent2); }
+  .ctb.active { color: var(--accent); border-color: var(--accent2); background: rgba(0,212,255,.08); }
+
+  /* canvas */
+  #canvas-wrap { flex: 1; position: relative; overflow: hidden; }
+  canvas#c3d { display: block; width: 100%; height: 100%; }
+
+  /* overlay HUD */
+  #hud-axes {
+    position: absolute; bottom: 40px; right: 16px;
+    background: rgba(13,15,18,.85); border: 1px solid var(--border);
+    border-radius: 6px; padding: 10px; pointer-events: none;
+  }
+  .hud-axis { display: flex; align-items: center; gap: 6px; font-size: 10px; margin-bottom: 4px; }
+  .hud-axis:last-child { margin-bottom: 0; }
+  .hud-dot { width: 8px; height: 8px; border-radius: 2px; }
+
+  #hud-legend {
+    position: absolute; top: 10px; right: 16px;
+    background: rgba(13,15,18,.9); border: 1px solid var(--border);
+    border-radius: 6px; padding: 10px 12px; pointer-events: none; min-width: 160px;
+  }
+  .leg-title { font-size: 9px; color: var(--text3); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 7px; }
+  .leg-row { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; font-size: 10px; color: var(--text2); }
+  .leg-swatch { width: 12px; height: 12px; border-radius: 2px; flex-shrink: 0; }
+
+  #coord-display {
+    position: absolute; top: 10px; left: 10px;
+    background: rgba(13,15,18,.85); border: 1px solid var(--border);
+    border-radius: 4px; padding: 6px 10px; font-size: 10px; color: var(--text2); pointer-events: none;
+  }
+  .coord-row { display: flex; gap: 10px; }
+  .coord-item { display: flex; gap: 4px; }
+  .coord-key { color: var(--text3); }
+
+  /* ── STATUS BAR ── */
+  #statusbar {
+    height: 26px; background: var(--bg2); border-top: 1px solid var(--border);
+    display: flex; align-items: center; padding: 0 12px; gap: 16px; font-size: 10px; color: var(--text2);
+  }
+  .sb { display: flex; gap: 4px; }
+  .sb-k { color: var(--text3); }
+  .sb-v { color: var(--text); }
+  .sb-sep { width: 1px; height: 14px; background: var(--border); }
+  #status-msg { flex: 1; color: var(--accent); font-size: 10px; }
+
+  /* ── RIGHT PANEL ── */
+  #right {
+    width: 200px; min-width: 200px; background: var(--bg2);
+    border-left: 1px solid var(--border); display: flex; flex-direction: column; overflow-y: auto;
+    scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+  }
+
+  /* mesh tree */
+  .tree-item {
+    display: flex; align-items: center; gap: 7px; padding: 6px 12px;
+    font-size: 10px; cursor: pointer; border-bottom: 1px solid var(--border);
+    transition: background .1s;
+  }
+  .tree-item:hover { background: var(--bg3); }
+  .tree-item.active { background: rgba(0,212,255,.06); border-left: 2px solid var(--accent); }
+  .tree-icon { width: 14px; height: 14px; border-radius: 2px; flex-shrink: 0; }
+  .tree-label { color: var(--text2); }
+  .tree-item.active .tree-label { color: var(--text); }
+  .tree-count { margin-left: auto; color: var(--text3); font-size: 9px; }
+
+  /* face stats table */
+  .face-table { width: 100%; font-size: 10px; border-collapse: collapse; }
+  .face-table td { padding: 4px 8px; border-bottom: 1px solid var(--border); }
+  .face-table td:last-child { text-align: right; font-weight: 500; }
+  .face-table tr:hover td { background: var(--bg3); }
+
+  /* loading overlay */
+  #loading {
+    position: absolute; inset: 0; background: rgba(13,15,18,.85);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    z-index: 100; pointer-events: none; opacity: 0; transition: opacity .3s;
+  }
+  #loading.show { opacity: 1; pointer-events: all; }
+  .ld-spinner {
+    width: 32px; height: 32px; border: 2px solid var(--border2);
+    border-top-color: var(--accent); border-radius: 50%;
+    animation: spin .7s linear infinite; margin-bottom: 12px;
+  }
+  .ld-text { font-size: 11px; color: var(--text2); }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* scrollbar */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+  /* canvas hint */
+  #canvas-hint {
+    position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
+    font-size: 9px; color: var(--text3); pointer-events: none; white-space: nowrap;
+    background: rgba(13,15,18,.7); padding: 3px 10px; border-radius: 3px;
+  }
+
+  /* layer viz line */
+  #layer-line {
+    position: absolute; left: 0; right: 0; height: 1px;
+    background: rgba(0,212,255,.4); pointer-events: none;
+    display: none; transition: top .1s;
+  }
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div id="topbar">
+  <div class="logo">Metal<span>Print</span> Studio</div>
+  <div class="menu-items">
+    <div class="mi">File</div><div class="mi">Edit</div><div class="mi">View</div>
+    <div class="mi">Inspect</div><div class="mi">Manufacture</div>
+  </div>
+  <div class="spacer"></div>
+  <span class="topbadge tb-blue">SLM/DMLS</span>
+  <span class="topbadge tb-green">Overhang AI v2</span>
+</div>
+
+<div id="layout">
+
+<!-- LEFT PANEL -->
+<div id="left">
+  <div id="left-scroll">
+
+    <div class="panel-section" id="prompt-area">
+      <div class="ps-title">Shape prompt</div>
+      <textarea id="prompt-box" placeholder="number 7, letter A, hollow cube 10cm, cylinder r=4 h=8, L-bracket, arch, overhang test..."></textarea>
+      <button id="gen-btn" onclick="generate()">▶ GENERATE + ANALYSE</button>
+      <div class="quick-row">
+        <span class="qp" onclick="fp('number 7')">num 7</span>
+        <span class="qp" onclick="fp('letter A')">A</span>
+        <span class="qp" onclick="fp('letter T')">T</span>
+        <span class="qp" onclick="fp('hollow cube 10cm')">□ cube</span>
+        <span class="qp" onclick="fp('cylinder r=4 h=10')">cyl</span>
+        <span class="qp" onclick="fp('sphere 6cm')">sphere</span>
+        <span class="qp" onclick="fp('L-bracket')">L-shape</span>
+        <span class="qp" onclick="fp('arch bridge')">arch</span>
+        <span class="qp" onclick="fp('overhang test')">overhang</span>
+        <span class="qp" onclick="fp('cone r=3 h=8')">cone</span>
+        <span class="qp" onclick="fp('torus r=5 t=2')">torus</span>
+        <span class="qp" onclick="fp('letter F')">F</span>
+      </div>
+    </div>
+
+    <div class="panel-section">
+      <div class="ps-title">Scale</div>
+      <div class="ctrl-group">
+        <div class="cr"><span class="cr-lbl x">X scale</span><input type="range" min=".2" max="3" step=".05" value="1" id="sx" oninput="updateMesh()"><span class="cr-val" id="sx-v">1.00</span></div>
+        <div class="cr"><span class="cr-lbl y">Y scale</span><input type="range" min=".2" max="3" step=".05" value="1" id="sy" oninput="updateMesh()"><span class="cr-val" id="sy-v">1.00</span></div>
+        <div class="cr"><span class="cr-lbl z">Z scale</span><input type="range" min=".2" max="3" step=".05" value="1" id="sz" oninput="updateMesh()"><span class="cr-val" id="sz-v">1.00</span></div>
+      </div>
+    </div>
+
+    <div class="panel-section">
+      <div class="ps-title">Rotation (°)</div>
+      <div class="ctrl-group">
+        <div class="cr"><span class="cr-lbl x">Pitch X</span><input type="range" min="-180" max="180" step="1" value="0" id="rx" oninput="updateMesh()"><span class="cr-val" id="rx-v">0°</span></div>
+        <div class="cr"><span class="cr-lbl y">Yaw Y</span><input type="range" min="-180" max="180" step="1" value="0" id="ry" oninput="updateMesh()"><span class="cr-val" id="ry-v">0°</span></div>
+        <div class="cr"><span class="cr-lbl z">Roll Z</span><input type="range" min="-180" max="180" step="1" value="0" id="rz" oninput="updateMesh()"><span class="cr-val" id="rz-v">0°</span></div>
+      </div>
+    </div>
+
+    <div class="panel-section">
+      <div class="ps-title">View mode</div>
+      <div class="vmode-row">
+        <div class="vm on" onclick="setV('solid',this)">Solid</div>
+        <div class="vm" onclick="setV('wire',this)">Wireframe</div>
+        <div class="vm" onclick="setV('overhang',this)">Overhang</div>
+        <div class="vm" onclick="setV('support',this)">Supports</div>
+        <div class="vm" onclick="setV('xray',this)">X-Ray</div>
+      </div>
+    </div>
+
+    <div class="panel-section">
+      <div class="ps-title">Overhang analysis</div>
+      <div class="metric-grid">
+        <div class="metric"><div class="mv red" id="m-oh">—</div><div class="ml">overhang %</div></div>
+        <div class="metric"><div class="mv orange" id="m-sv">—</div><div class="ml">support pillars</div></div>
+        <div class="metric"><div class="mv green" id="m-pw">—</div><div class="ml">powder saved</div></div>
+        <div class="metric"><div class="mv accent" id="m-ang">—</div><div class="ml">best orient.</div></div>
+      </div>
+      <div class="riskbar"><div class="riskfill" id="risk-fill" style="width:0%"></div></div>
+      <div class="risk-labels"><span id="risk-lbl">—</span><span id="risk-pct">—</span></div>
+    </div>
+
+    <div class="panel-section">
+      <div class="ps-title">Overhang threshold</div>
+      <div class="cr">
+        <span class="cr-lbl" style="color:var(--text2)">Angle</span>
+        <input type="range" min="20" max="60" step="1" value="45" id="thresh" oninput="updateThresh()">
+        <span class="cr-val" id="thresh-v">45°</span>
+      </div>
+      <div class="cr" style="margin-top:4px">
+        <span class="cr-lbl" style="color:var(--text2)">Layer h</span>
+        <input type="range" min="1" max="8" step="1" value="3" id="layerh" oninput="updateLayerH()">
+        <span class="cr-val" id="layerh-v">0.03mm</span>
+      </div>
+    </div>
+
+    <div class="panel-section">
+      <div class="ps-title">Support type</div>
+      <div class="sup-types">
+        <div class="st-btn on" id="stype-block" onclick="setSType('block',this)">Block</div>
+        <div class="st-btn" id="stype-lattice" onclick="setSType('lattice',this)">Lattice</div>
+        <div class="st-btn" id="stype-tree" onclick="setSType('tree',this)">Tree</div>
+      </div>
+      <div class="ctrl-group" style="margin-top:8px">
+        <div class="cr"><span class="cr-lbl" style="color:var(--text2);width:56px">Density</span><input type="range" min="1" max="10" step="1" value="5" id="sup-density" oninput="updateSupDensity()"><span class="cr-val" id="sup-density-v">5</span></div>
+        <div class="cr"><span class="cr-lbl" style="color:var(--text2);width:56px">Contact</span><input type="range" min="1" max="5" step="1" value="2" id="sup-contact" oninput="updateSupDensity()"><span class="cr-val" id="sup-contact-v">0.2mm</span></div>
+      </div>
+    </div>
+
+    <div class="panel-section">
+      <div class="ps-title">Build orientation optimizer</div>
+      <div style="font-size:9px;color:var(--text3);margin-bottom:4px">6 orientations tested — best = lowest overhang</div>
+      <div class="og" id="orient-grid"></div>
+      <button class="apply-btn" onclick="applyBest()">Apply best orientation</button>
+    </div>
+
+    <div class="panel-section" style="border-bottom:none">
+      <div class="ps-title">Print recommendations</div>
+      <div id="tip-box"></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- CENTER: CANVAS -->
+<div id="center">
+  <div id="canvas-toolbar">
+    <div class="ctb active" onclick="setShading('phong',this)">Phong</div>
+    <div class="ctb" onclick="setShading('flat',this)">Flat</div>
+    <div class="ctb" onclick="setShading('normal',this)">Normals</div>
+    <div class="toolbar-sep"></div>
+    <div class="ctb" onclick="resetCamera()">⌂ Home</div>
+    <div class="ctb" onclick="setProj('persp')">Perspective</div>
+    <div class="ctb" onclick="setProj('ortho')">Orthographic</div>
+    <div class="toolbar-sep"></div>
+    <div class="ctb" onclick="toggleGrid()">Grid</div>
+    <div class="ctb" onclick="toggleAxes()">Axes</div>
+    <div class="ctb" onclick="toggleLayerSim()">Layer sim</div>
+    <div class="spacer"></div>
+    <div style="font-size:9px;color:var(--text3)" id="face-hover-info"></div>
+  </div>
+
+  <div id="canvas-wrap">
+    <canvas id="c3d"></canvas>
+    <div id="layer-line"></div>
+
+    <div id="coord-display">
+      <div class="coord-row">
+        <div class="coord-item"><span class="coord-key">X</span><span id="cx">0.00</span></div>
+        <div class="coord-item"><span class="coord-key">Y</span><span id="cy">0.00</span></div>
+        <div class="coord-item"><span class="coord-key">Z</span><span id="cz">0.00</span></div>
+        <div class="coord-item"><span class="coord-key">BUILD</span><span style="color:var(--accent)">+Z</span></div>
+      </div>
+    </div>
+
+    <div id="hud-legend">
+      <div class="leg-title">Legend</div>
+      <div class="leg-row"><div class="leg-swatch" style="background:#4488dd"></div>Safe face (self-supported)</div>
+      <div class="leg-row"><div class="leg-swatch" style="background:#ff9f43"></div>Marginal (35–45°)</div>
+      <div class="leg-row"><div class="leg-swatch" style="background:#ff4757"></div>Critical overhang (&gt;45°)</div>
+      <div class="leg-row"><div class="leg-swatch" style="background:#2ecc71"></div>Support structure</div>
+      <div class="leg-row"><div class="leg-swatch" style="background:#27ae60;opacity:.5"></div>Contact tip</div>
+      <div class="leg-row"><div class="leg-swatch" style="background:#555"></div>Build plate</div>
+    </div>
+
+    <div id="hud-axes">
+      <div class="hud-axis"><div class="hud-dot" style="background:#ff6b6b"></div><span style="color:#ff6b6b">X</span> <span style="color:var(--text3)">— Pitch</span></div>
+      <div class="hud-axis"><div class="hud-dot" style="background:#6bcb77"></div><span style="color:#6bcb77">Y</span> <span style="color:var(--text3)">— Yaw</span></div>
+      <div class="hud-axis"><div class="hud-dot" style="background:#4dc9f6"></div><span style="color:#4dc9f6">Z</span> <span style="color:var(--text3)">— Build ↑</span></div>
+    </div>
+
+    <div id="canvas-hint">Left drag: orbit  ·  Right drag: pan  ·  Scroll: zoom  ·  Hover: inspect face</div>
+
+    <div id="loading">
+      <div class="ld-spinner"></div>
+      <div class="ld-text" id="ld-text">Generating mesh...</div>
+    </div>
+  </div>
+
+  <div id="statusbar">
+    <div class="sb"><span class="sb-k">Shape</span><span class="sb-v" id="s-shape">—</span></div>
+    <div class="sb-sep"></div>
+    <div class="sb"><span class="sb-k">Verts</span><span class="sb-v" id="s-verts">—</span></div>
+    <div class="sb"><span class="sb-k">Tris</span><span class="sb-v" id="s-faces">—</span></div>
+    <div class="sb-sep"></div>
+    <div class="sb"><span class="sb-k">Overhang</span><span class="sb-v" id="s-oh">—</span></div>
+    <div class="sb"><span class="sb-k">Supports</span><span class="sb-v" id="s-sup">—</span></div>
+    <div class="sb-sep"></div>
+    <span id="status-msg">Ready — type a shape prompt and click Generate</span>
+  </div>
+</div>
+
+<!-- RIGHT PANEL -->
+<div id="right">
+  <div class="panel-section">
+    <div class="ps-title">Scene objects</div>
+  </div>
+  <div id="tree-items"></div>
+  <div class="panel-section" style="margin-top:auto">
+    <div class="ps-title">Face analysis</div>
+    <table class="face-table" id="face-table">
+      <tr><td style="color:var(--text3)">Safe</td><td id="ft-safe">—</td></tr>
+      <tr><td style="color:var(--orange)">Marginal</td><td id="ft-warn">—</td></tr>
+      <tr><td style="color:var(--red)">Critical</td><td id="ft-crit">—</td></tr>
+      <tr><td style="color:var(--green)">Supports</td><td id="ft-sup">—</td></tr>
+      <tr><td style="color:var(--text3)">Total</td><td id="ft-total">—</td></tr>
+    </table>
+  </div>
+  <div class="panel-section">
+    <div class="ps-title">Material</div>
+    <table class="face-table">
+      <tr><td style="color:var(--text3)">Layer h</td><td id="mt-layer">30 µm</td></tr>
+      <tr><td style="color:var(--text3)">Powder</td><td>316L SS</td></tr>
+      <tr><td style="color:var(--text3)">Process</td><td>SLM</td></tr>
+    </table>
+  </div>
+</div>
+
+</div><!-- #layout -->
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// ═══════════════════════════════════════════
+//  GLOBALS
+// ═══════════════════════════════════════════
+let scene, camera, renderer, raycaster, mouse;
+let mainMesh, wireMesh, ohMesh, supportGroup, axesGroup, gridHelper;
+let drag=false, isPan=false, lx=0, ly=0;
+let camT=0.7, camP=0.85, camR=7;
+let vMode='solid', shadingMode='phong', projMode='persp', supportType='block';
+let ovhThresh=45, currentGeo=null, orientData=[], bestIdx=0;
+let showGrid=true, showAxes=true;
+let layerSimActive=false, layerY=-1.5;
+const BUILD_DIR = new THREE.Vector3(0,0,1); // Z-up build direction
+
+// ═══════════════════════════════════════════
+//  INIT THREE.JS
+// ═══════════════════════════════════════════
+function init3() {
+  const wrap = document.getElementById('canvas-wrap');
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x0d0f12);
+
+  // Perspective camera
+  camera = new THREE.PerspectiveCamera(45, wrap.clientWidth/wrap.clientHeight, 0.01, 500);
+  moveCam();
+
+  renderer = new THREE.WebGLRenderer({canvas: document.getElementById('c3d'), antialias: true});
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  resize3();
+
+  // Lighting — physically based for metal look
+  scene.add(new THREE.AmbientLight(0x404060, 0.6));
+  const sun = new THREE.DirectionalLight(0xffffff, 1.2);
+  sun.position.set(5, 10, 7); sun.castShadow = true;
+  sun.shadow.mapSize.set(1024,1024); scene.add(sun);
+  const fill = new THREE.DirectionalLight(0x8888ff, 0.4);
+  fill.position.set(-5,-3,-6); scene.add(fill);
+  const rim = new THREE.DirectionalLight(0x00d4ff, 0.25);
+  rim.position.set(0,5,-8); scene.add(rim);
+
+  raycaster = new THREE.Raycaster();
+  mouse = new THREE.Vector2();
+
+  buildGrid(); buildAxes();
+  supportGroup = new THREE.Group(); scene.add(supportGroup);
+
+  // Mouse events
+  const cvs = document.getElementById('c3d');
+  cvs.addEventListener('mousedown', e => {
+    if(e.button===0){drag=true;}
+    if(e.button===2){isPan=true;}
+    lx=e.clientX; ly=e.clientY;
+  });
+  window.addEventListener('mouseup', e => { drag=false; isPan=false; });
+  window.addEventListener('mousemove', e => {
+    if(drag) {
+      camT += (e.clientX-lx)*0.007;
+      camP = Math.max(0.05, Math.min(Math.PI-0.05, camP+(e.clientY-ly)*0.007));
+      lx=e.clientX; ly=e.clientY; moveCam();
+    }
+    if(isPan) {
+      // simple pan
+      const dx=(e.clientX-lx)*0.005, dy=(e.clientY-ly)*0.005;
+      camera.position.x -= dx; camera.position.y += dy;
+      lx=e.clientX; ly=e.clientY;
+    }
+    // hover inspection
+    const rect = cvs.getBoundingClientRect();
+    mouse.x = ((e.clientX-rect.left)/rect.width)*2-1;
+    mouse.y = -((e.clientY-rect.top)/rect.height)*2+1;
+    inspectFace();
+  });
+  cvs.addEventListener('wheel', e => {
+    camR = Math.max(1.2, Math.min(40, camR + e.deltaY*0.015));
+    moveCam(); e.preventDefault();
+  }, {passive:false});
+  cvs.addEventListener('contextmenu', e => e.preventDefault());
+  window.addEventListener('resize', resize3);
+
+  (function loop(){ requestAnimationFrame(loop); renderer.render(scene,camera); })();
+}
+
+function resize3() {
+  const w = document.getElementById('canvas-wrap');
+  const W=w.clientWidth||600, H=Math.max(w.clientHeight,400);
+  if(projMode==='persp') { camera.aspect=W/H; camera.updateProjectionMatrix(); }
+  renderer.setSize(W,H);
+}
+
+function moveCam() {
+  camera.position.set(
+    camR*Math.sin(camP)*Math.sin(camT),
+    camR*Math.cos(camP),
+    camR*Math.sin(camP)*Math.cos(camT)
+  );
+  camera.lookAt(0,0,0);
+  const p = camera.position;
+  document.getElementById('cx').textContent = p.x.toFixed(2);
+  document.getElementById('cy').textContent = p.y.toFixed(2);
+  document.getElementById('cz').textContent = p.z.toFixed(2);
+}
+
+function resetCamera() { camT=0.7; camP=0.85; camR=7; moveCam(); }
+
+function buildGrid() {
+  gridHelper = new THREE.GridHelper(10, 20, 0x2a2f38, 0x1e2328);
+  gridHelper.position.y = -1.55;
+  scene.add(gridHelper);
+  // Build plate
+  const pgeo = new THREE.PlaneGeometry(10,10);
+  const pmat = new THREE.MeshPhongMaterial({color:0x1a1e23, opacity:0.7, transparent:true, side:THREE.DoubleSide});
+  const plate = new THREE.Mesh(pgeo, pmat);
+  plate.rotation.x = -Math.PI/2; plate.position.y=-1.56;
+  scene.add(plate);
+}
+
+function buildAxes() {
+  axesGroup = new THREE.Group();
+  const mkAx=(dir,col)=>{
+    const mat=new THREE.LineBasicMaterial({color:col,linewidth:2});
+    const geo=new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,0,0),dir]);
+    return new THREE.Line(geo,mat);
+  };
+  axesGroup.add(mkAx(new THREE.Vector3(2,0,0),0xff4444));
+  axesGroup.add(mkAx(new THREE.Vector3(0,2,0),0x44ff44));
+  axesGroup.add(mkAx(new THREE.Vector3(0,0,2),0x44aaff));
+  scene.add(axesGroup);
+}
+
+function toggleGrid(){ gridHelper.visible=!gridHelper.visible; }
+function toggleAxes(){ axesGroup.visible=!axesGroup.visible; }
+function setProj(p){ projMode=p; }
+function setShading(s,el){ shadingMode=s; document.querySelectorAll('#canvas-toolbar .ctb').forEach(b=>b.classList.remove('active')); el.classList.add('active'); rebuildMaterial(); }
+
+function rebuildMaterial(){
+  if(!mainMesh)return;
+  const col = new THREE.Color(0x3388cc);
+  let mat;
+  if(shadingMode==='flat') mat=new THREE.MeshLambertMaterial({color:col,side:THREE.DoubleSide});
+  else if(shadingMode==='normal') mat=new THREE.MeshNormalMaterial({side:THREE.DoubleSide});
+  else mat=new THREE.MeshPhongMaterial({color:col,shininess:80,specular:new THREE.Color(0x112244),side:THREE.DoubleSide});
+  mainMesh.material=mat;
+}
+
+// Layer simulation
+function toggleLayerSim(){
+  layerSimActive=!layerSimActive;
+  const ll=document.getElementById('layer-line');
+  if(layerSimActive){
+    ll.style.display='block';
+    animateLayer();
+  } else {
+    ll.style.display='none';
+  }
+}
+function animateLayer(){
+  if(!layerSimActive)return;
+  const wrap=document.getElementById('canvas-wrap');
+  const H=wrap.clientHeight;
+  let y=H;
+  const step=()=>{
+    if(!layerSimActive)return;
+    y-=1.2;
+    if(y<0)y=H;
+    document.getElementById('layer-line').style.top=y+'px';
+    requestAnimationFrame(step);
+  };
+  step();
+}
+
+// Face hover inspection
+function inspectFace(){
+  if(!mainMesh)return;
+  raycaster.setFromCamera(mouse,camera);
+  const hits = raycaster.intersectObject(vMode==='overhang' && ohMesh ? ohMesh : mainMesh);
+  const info = document.getElementById('face-hover-info');
+  if(hits.length){
+    const n=hits[0].face.normal.clone().applyEuler(mainMesh.rotation).normalize();
+    const angle = Math.acos(Math.min(1,Math.abs(n.dot(BUILD_DIR))))*180/Math.PI;
+    const flag = angle<(90-ovhThresh) ? '⚠ CRITICAL' : angle<(90-35) ? '△ marginal' : '✓ safe';
+    info.textContent = `Face angle: ${(90-angle).toFixed(1)}° from horiz  ${flag}`;
+  } else {
+    info.textContent='';
+  }
+}
+
+// ═══════════════════════════════════════════
+//  GLYPH → 3D EXTRUSION (number/letter)
+// ═══════════════════════════════════════════
+function makeGlyph(char) {
+  const sz=256;
+  const c=document.createElement('canvas'); c.width=sz; c.height=sz;
+  const ctx=c.getContext('2d');
+  ctx.fillStyle='#000'; ctx.fillRect(0,0,sz,sz);
+  ctx.fillStyle='#fff';
+  ctx.font=`bold ${Math.round(sz*0.78)}px Arial Black, Impact, sans-serif`;
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText(char, sz/2, sz/2+sz*0.05);
+
+  const d=ctx.getImageData(0,0,sz,sz).data;
+  const pts=[];
+  const step=4;
+  for(let y=0;y<sz;y+=step)
+    for(let x=0;x<sz;x+=step)
+      if(d[(y*sz+x)*4]>100) pts.push([(x/sz-0.5)*1.6, -(y/sz-0.5)*1.6]);
+
+  if(!pts.length) {
+    for(let i=0;i<30;i++) pts.push([Math.cos(i/30*Math.PI*2)*0.5,Math.sin(i/30*Math.PI*2)*0.5]);
+  }
+
+  // Build extruded voxel-style geometry from sampled points
+  const depth=0.3;
+  const voxSize=step/sz*1.6*1.05;
+  const positions=[], normals=[], indices=[];
+
+  pts.forEach(([px,py])=>{
+    const base=positions.length/3;
+    const x0=px-voxSize/2, x1=px+voxSize/2;
+    const y0=py-voxSize/2, y1=py+voxSize/2;
+    const z0=0, z1=depth;
+
+    // Front
+    positions.push(x0,y0,z1, x1,y0,z1, x1,y1,z1, x0,y1,z1);
+    for(let i=0;i<4;i++) normals.push(0,0,1);
+    indices.push(base,base+1,base+2, base,base+2,base+3);
+
+    // Back
+    const b2=positions.length/3;
+    positions.push(x0,y0,z0, x1,y0,z0, x1,y1,z0, x0,y1,z0);
+    for(let i=0;i<4;i++) normals.push(0,0,-1);
+    indices.push(b2,b2+2,b2+1, b2,b2+3,b2+2);
+
+    // Top
+    const b3=positions.length/3;
+    positions.push(x0,y1,z0, x1,y1,z0, x1,y1,z1, x0,y1,z1);
+    for(let i=0;i<4;i++) normals.push(0,1,0);
+    indices.push(b3,b3+1,b3+2, b3,b3+2,b3+3);
+
+    // Bottom
+    const b4=positions.length/3;
+    positions.push(x0,y0,z0, x1,y0,z0, x1,y0,z1, x0,y0,z1);
+    for(let i=0;i<4;i++) normals.push(0,-1,0);
+    indices.push(b4,b4+2,b4+1, b4,b4+3,b4+2);
+  });
+
+  const geo=new THREE.BufferGeometry();
+  geo.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));
+  geo.setAttribute('normal',new THREE.Float32BufferAttribute(normals,3));
+  geo.setIndex(indices);
+  geo.computeBoundingBox();
+  return geo;
+}
+
+// ═══════════════════════════════════════════
+//  SHAPE PARSER
+// ═══════════════════════════════════════════
+function parseShape(raw){
+  const t=raw.toLowerCase().trim();
+  const nums=(s)=>(s.match(/\d+(\.\d+)?/g)||[]).map(Number);
+  const n=nums(t);
+
+  if(/number\s*\d/.test(t)||(/^\d$/.test(t.trim()))){
+    const ch=t.match(/\d/)[0];
+    return {geo:makeGlyph(ch), label:`Number "${ch}"`, isGlyph:true};
+  }
+  if(/letter\s*[a-z]/i.test(t)||(/^[a-z]$/i.test(t.trim()))){
+    const m=t.match(/letter\s*([a-z])/i)||t.match(/^([a-z])$/i);
+    const ch=m[1].toUpperCase();
+    return {geo:makeGlyph(ch), label:`Letter "${ch}"`, isGlyph:true};
+  }
+  if(/l[\s-]?(bracket|shape)/.test(t)){
+    const s=new THREE.Shape();
+    s.moveTo(-0.9,-0.9); s.lineTo(0.9,-0.9); s.lineTo(0.9,-0.3);
+    s.lineTo(-0.2,-0.3); s.lineTo(-0.2,0.9); s.lineTo(-0.9,0.9); s.closePath();
+    return {geo:new THREE.ExtrudeGeometry(s,{depth:0.4,bevelEnabled:true,bevelThickness:.03,bevelSize:.02,bevelSegments:2}), label:'L-bracket'};
+  }
+  if(/arch|bridge/.test(t)){
+    const s=new THREE.Shape();
+    s.moveTo(-1.1,-0.8); s.lineTo(-0.85,-0.8); s.lineTo(-0.85,-0.05);
+    s.absarc(0,-0.05,0.85,Math.PI,0,true);
+    s.lineTo(0.85,-0.8); s.lineTo(1.1,-0.8); s.lineTo(1.1,-1); s.lineTo(-1.1,-1); s.closePath();
+    return {geo:new THREE.ExtrudeGeometry(s,{depth:0.35,bevelEnabled:false}), label:'Arch bridge'};
+  }
+  if(/overhang.test|test/.test(t)){
+    const s=new THREE.Shape();
+    s.moveTo(-1,-0.6); s.lineTo(0,-0.6); s.lineTo(0,0.4); s.lineTo(1.1,0.4);
+    s.lineTo(1.1,0.9); s.lineTo(-0.25,0.9); s.lineTo(-0.25,-0.05); s.lineTo(-1,-0.05); s.closePath();
+    return {geo:new THREE.ExtrudeGeometry(s,{depth:0.4,bevelEnabled:true,bevelThickness:.03,bevelSize:.02,bevelSegments:1}), label:'Overhang test'};
+  }
+  if(/hollow.cube|cube.hollow/.test(t)){
+    const sz=(n[0]||10)/10;
+    return {geo:new THREE.BoxGeometry(sz,sz,sz,5,5,5), label:'Hollow cube', hollow:true};
+  }
+  if(/cube/.test(t)){const sz=(n[0]||10)/10; return {geo:new THREE.BoxGeometry(sz,sz,sz,4,4,4), label:'Cube'};}
+  if(/sphere/.test(t)){const r=(n[0]||6)/20; return {geo:new THREE.SphereGeometry(r,48,48), label:'Sphere'};}
+  if(/cyl/.test(t)){const r=(n[0]||4)/10,h=(n[1]||10)/10; return {geo:new THREE.CylinderGeometry(r,r,h,64,6), label:'Cylinder'};}
+  if(/cone/.test(t)){const r=(n[0]||3)/10,h=(n[1]||8)/10; return {geo:new THREE.ConeGeometry(r,h,48,6), label:'Cone'};}
+  if(/torus/.test(t)){const R=(n[0]||5)/10,tb=(n[1]||2)/10; return {geo:new THREE.TorusGeometry(R,tb,32,80), label:'Torus'};}
+  if(/rect|box/.test(t)){const w=(n[0]||12)/10,h=(n[1]||6)/10,d=(n[2]||4)/10; return {geo:new THREE.BoxGeometry(w,h,d,4,4,4), label:'Box'};}
+  if(/octa/.test(t)) return {geo:new THREE.OctahedronGeometry(0.8,1), label:'Octahedron'};
+  if(/tetra/.test(t)) return {geo:new THREE.TetrahedronGeometry(0.8,1), label:'Tetrahedron'};
+  if(/prism/.test(t)) return {geo:new THREE.CylinderGeometry(0,0.7,1.2,3,4), label:'Triangular prism'};
+
+  const ch=t.trim();
+  if(ch.length===1) return {geo:makeGlyph(ch), label:`Glyph "${ch}"`, isGlyph:true};
+  return {geo:new THREE.BoxGeometry(0.8,0.8,0.8,4,4,4), label:'Box (default)'};
+}
+
+// ═══════════════════════════════════════════
+//  OVERHANG ANALYSIS (triangle-level)
+// ═══════════════════════════════════════════
+function analyseOverhangs(geo, euler) {
+  const pos=geo.attributes.position;
+  const idx=geo.index;
+  const mat4=new THREE.Matrix4().makeRotationFromEuler(euler);
+  const vA=new THREE.Vector3(), vB=new THREE.Vector3(), vC=new THREE.Vector3();
+  const ab=new THREE.Vector3(), ac=new THREE.Vector3(), norm=new THREE.Vector3();
+  const faceCount = idx ? idx.count/3 : pos.count/3;
+  const res={crit:[], warn:[], safe:[], critArea:0, totalArea:0};
+
+  for(let i=0;i<faceCount;i++){
+    const ia=idx?idx.getX(i*3):i*3, ib=idx?idx.getX(i*3+1):i*3+1, ic=idx?idx.getX(i*3+2):i*3+2;
+    vA.set(pos.getX(ia),pos.getY(ia),pos.getZ(ia)).applyMatrix4(mat4);
+    vB.set(pos.getX(ib),pos.getY(ib),pos.getZ(ib)).applyMatrix4(mat4);
+    vC.set(pos.getX(ic),pos.getY(ic),pos.getZ(ic)).applyMatrix4(mat4);
+    ab.subVectors(vB,vA); ac.subVectors(vC,vA);
+    norm.crossVectors(ab,ac);
+    const area=norm.length()*0.5;
+    norm.normalize();
+    const dot=norm.dot(BUILD_DIR);
+    const angleFromHoriz = Math.acos(Math.min(1,Math.abs(dot)))*180/Math.PI;
+    res.totalArea+=area;
+    const isFacingDown=dot<0;
+    const ovhAngle = isFacingDown ? (90-angleFromHoriz) : 0;
+    if(isFacingDown && ovhAngle > ovhThresh){res.crit.push(i); res.critArea+=area;}
+    else if(isFacingDown && ovhAngle > 35){res.warn.push(i);}
+    else res.safe.push(i);
+  }
+  return res;
+}
+
+// ═══════════════════════════════════════════
+//  COLOURED OVERHANG MESH (per-triangle)
+// ═══════════════════════════════════════════
+function buildOverhangMesh(geo, analysis){
+  const pos=geo.attributes.position;
+  const idx=geo.index;
+  const faceCount = idx ? idx.count/3 : pos.count/3;
+
+  const positions=[], colors=[];
+  const critSet=new Set(analysis.crit);
+  const warnSet=new Set(analysis.warn);
+
+  for(let i=0;i<faceCount;i++){
+    const ia=idx?idx.getX(i*3):i*3, ib=idx?idx.getX(i*3+1):i*3+1, ic=idx?idx.getX(i*3+2):i*3+2;
+    let r,g,b;
+    if(critSet.has(i)){r=1;g=0.28;b=0.34;}       // red
+    else if(warnSet.has(i)){r=1;g=0.62;b=0.26;}  // orange
+    else {r=0.26;g=0.53;b=0.87;}                  // blue
+
+    [ia,ib,ic].forEach(vi=>{
+      positions.push(pos.getX(vi),pos.getY(vi),pos.getZ(vi));
+      colors.push(r,g,b);
+    });
+  }
+
+  const g=new THREE.BufferGeometry();
+  g.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));
+  g.setAttribute('color',new THREE.Float32BufferAttribute(colors,3));
+  g.computeVertexNormals();
+  return new THREE.Mesh(g, new THREE.MeshPhongMaterial({vertexColors:true,side:THREE.DoubleSide,shininess:40}));
+}
+
+// ═══════════════════════════════════════════
+//  SUPPORT STRUCTURE GENERATION
+// ═══════════════════════════════════════════
+function buildSupports(geo, euler, analysis){
+  const grp = new THREE.Group();
+  if(!analysis.crit.length) return grp;
+
+  const pos=geo.attributes.position;
+  const idx=geo.index;
+  const PLATE_Y=-1.5;
+  const density = parseInt(document.getElementById('sup-density').value);
+  const contactR = parseFloat(document.getElementById('sup-contact').value)*0.05;
+  const spacing = Math.max(0.08, 0.35 - density*0.025);
+
+  // Collect overhang face centroids
+  const mat4=new THREE.Matrix4().makeRotationFromEuler(euler);
+  const pts=[];
+  analysis.crit.forEach(fi=>{
+    const ia=idx?idx.getX(fi*3):fi*3, ib=idx?idx.getX(fi*3+1):fi*3+1, ic=idx?idx.getX(fi*3+2):fi*3+2;
+    const vA=new THREE.Vector3(pos.getX(ia),pos.getY(ia),pos.getZ(ia)).applyMatrix4(mat4);
+    const vB=new THREE.Vector3(pos.getX(ib),pos.getY(ib),pos.getZ(ib)).applyMatrix4(mat4);
+    const vC=new THREE.Vector3(pos.getX(ic),pos.getY(ic),pos.getZ(ic)).applyMatrix4(mat4);
+    pts.push({x:(vA.x+vB.x+vC.x)/3, y:(vA.y+vB.y+vC.y)/3, z:(vA.z+vB.z+vC.z)/3});
+  });
+
+  // Deduplicate points by spacing
+  const placed=[];
+  pts.forEach(p=>{
+    const too=placed.some(q=>Math.hypot(q.x-p.x,q.z-p.z)<spacing);
+    if(!too) placed.push(p);
+  });
+
+  // Materials
+  const supMat=new THREE.MeshPhongMaterial({color:0x2ecc71,opacity:0.75,transparent:true,shininess:30});
+  const tipMat=new THREE.MeshPhongMaterial({color:0x27ae60,opacity:0.9,transparent:true});
+  const baseMat=new THREE.MeshPhongMaterial({color:0x27ae60,opacity:0.5,transparent:true});
+
+  if(supportType==='block'){
+    // Block supports: thick columns with cross-braces
+    placed.forEach(p=>{
+      const h=p.y-PLATE_Y; if(h<0.04)return;
+      // Main column
+      const colR=0.04+density*0.004;
+      const cgeo=new THREE.CylinderGeometry(colR,colR*1.3,h,8);
+      const cm=new THREE.Mesh(cgeo,supMat.clone());
+      cm.position.set(p.x,PLATE_Y+h/2,p.z);
+      grp.add(cm);
+      // Top contact tip (small sphere)
+      const tgeo=new THREE.SphereGeometry(contactR+0.025,8,8);
+      const tm=new THREE.Mesh(tgeo,tipMat);
+      tm.position.set(p.x,p.y,p.z); grp.add(tm);
+      // Base flange
+      const bgeo=new THREE.CylinderGeometry(colR*2,colR*2.5,0.04,8);
+      const bm=new THREE.Mesh(bgeo,baseMat);
+      bm.position.set(p.x,PLATE_Y+0.02,p.z); grp.add(bm);
+    });
+    // Cross braces between nearby supports
+    for(let i=0;i<placed.length;i++){
+      for(let j=i+1;j<placed.length;j++){
+        const d=Math.hypot(placed[i].x-placed[j].x,placed[i].z-placed[j].z);
+        if(d<spacing*2.2&&d>0.01){
+          const mid=new THREE.Vector3((placed[i].x+placed[j].x)/2,(placed[i].y+placed[j].y)/2,(placed[i].z+placed[j].z)/2);
+          const len=Math.hypot(placed[i].x-placed[j].x,placed[i].y-placed[j].y,placed[i].z-placed[j].z);
+          const bgeo=new THREE.CylinderGeometry(0.012,0.012,len,6);
+          const bm=new THREE.Mesh(bgeo,new THREE.MeshPhongMaterial({color:0x239b56,opacity:0.5,transparent:true}));
+          bm.position.copy(mid);
+          const dir=new THREE.Vector3(placed[j].x-placed[i].x,placed[j].y-placed[i].y,placed[j].z-placed[i].z).normalize();
+          bm.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),dir);
+          grp.add(bm);
+        }
+      }
+    }
+  } else if(supportType==='lattice'){
+    // Lattice: diagonal struts in a grid pattern
+    placed.forEach(p=>{
+      const h=p.y-PLATE_Y; if(h<0.04)return;
+      const cells=Math.max(2,Math.round(h/0.25));
+      for(let c=0;c<cells;c++){
+        const y0=PLATE_Y+c*(h/cells), y1=PLATE_Y+(c+1)*(h/cells);
+        const r=0.015+density*0.002;
+        // Vertical member
+        const vgeo=new THREE.CylinderGeometry(r,r,h/cells,6);
+        const vm=new THREE.Mesh(vgeo,supMat.clone());
+        vm.position.set(p.x,y0+(h/cells)/2,p.z); grp.add(vm);
+        // Diagonal cross struts
+        if(c<cells-1){
+          const offsets=[[0.08,0],[0,0.08],[-0.08,0],[0,-0.08]];
+          offsets.forEach(([ox,oz])=>{
+            const dgeo=new THREE.CylinderGeometry(r*0.7,r*0.7,0.13,4);
+            const dm=new THREE.Mesh(dgeo,new THREE.MeshPhongMaterial({color:0x1a8a4a,opacity:0.55,transparent:true}));
+            dm.position.set(p.x+ox/2,(y0+y1)/2,p.z+oz/2);
+            const dir=new THREE.Vector3(ox,h/cells,oz).normalize();
+            dm.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),dir);
+            grp.add(dm);
+          });
+        }
+      }
+      // Contact tip
+      const tgeo=new THREE.SphereGeometry(contactR+0.02,6,6);
+      const tm=new THREE.Mesh(tgeo,tipMat);
+      tm.position.set(p.x,p.y,p.z); grp.add(tm);
+    });
+  } else {
+    // Tree supports: main trunk + branching
+    const trees=[];
+    placed.forEach(p=>{
+      const h=p.y-PLATE_Y; if(h<0.04)return;
+      // Main trunk
+      const trunk_r=0.03+density*0.003;
+      const tgeo=new THREE.CylinderGeometry(trunk_r*0.6,trunk_r*1.4,h*0.65,8);
+      const tm=new THREE.Mesh(tgeo,supMat.clone());
+      tm.position.set(p.x,PLATE_Y+h*0.65/2,p.z); grp.add(tm);
+      // Branches
+      const branchY=PLATE_Y+h*0.65;
+      const bCount=Math.min(4,1+Math.floor(density/3));
+      for(let b=0;b<bCount;b++){
+        const ang=(b/bCount)*Math.PI*2;
+        const bLen=h*0.35;
+        const ex=Math.cos(ang)*0.1, ez=Math.sin(ang)*0.1;
+        const bgeo=new THREE.CylinderGeometry(trunk_r*0.3,trunk_r*0.5,bLen,6);
+        const bm=new THREE.Mesh(bgeo,supMat.clone());
+        const bDir=new THREE.Vector3(ex,bLen,ez).normalize();
+        bm.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),bDir);
+        bm.position.set(p.x+ex/2, branchY+bLen/2, p.z+ez/2);
+        grp.add(bm);
+        // Tip
+        const tipgeo=new THREE.SphereGeometry(contactR+0.018,6,6);
+        const tipm=new THREE.Mesh(tipgeo,tipMat);
+        tipm.position.set(p.x+ex,p.y,p.z+ez); grp.add(tipm);
+      }
+      // Base pad
+      const padgeo=new THREE.CylinderGeometry(trunk_r*2.5,trunk_r*3,0.035,8);
+      const padm=new THREE.Mesh(padgeo,baseMat);
+      padm.position.set(p.x,PLATE_Y+0.018,p.z); grp.add(padm);
+    });
+  }
+  return grp;
+}
+
+// ═══════════════════════════════════════════
+//  ORIENTATION SCORING
+// ═══════════════════════════════════════════
+const ORIENTS=[
+  {rx:0,ry:0,rz:0,name:'Default'},
+  {rx:90,ry:0,rz:0,name:'+X 90°'},
+  {rx:-90,ry:0,rz:0,name:'-X 90°'},
+  {rx:0,ry:0,rz:90,name:'+Z 90°'},
+  {rx:0,ry:0,rz:-90,name:'-Z 90°'},
+  {rx:180,ry:0,rz:0,name:'Flip Y'},
+];
+
+function scoreOrient(geo,rx,ry,rz){
+  const e=new THREE.Euler(rx*Math.PI/180,ry*Math.PI/180,rz*Math.PI/180);
+  const r=analyseOverhangs(geo,e);
+  const total=r.crit.length+r.warn.length+r.safe.length||1;
+  return {rx,ry,rz, score:r.critArea, pct:Math.round(r.crit.length/total*100), analysis:r};
+}
+
+// ═══════════════════════════════════════════
+//  MAIN GENERATE
+// ═══════════════════════════════════════════
+function generate(){
+  const raw=(document.getElementById('prompt-box').value||'cube').trim();
+  showLoading('Generating mesh...');
+
+  setTimeout(()=>{
+    clearScene();
+    const result=parseShape(raw);
+    currentGeo=result.geo;
+
+    // Main solid mesh
+    const mat=new THREE.MeshPhongMaterial({
+      color:0x3388cc, shininess:80, specular:new THREE.Color(0x112244), side:THREE.DoubleSide
+    });
+    mainMesh=new THREE.Mesh(result.geo,mat);
+    mainMesh.castShadow=true; mainMesh.receiveShadow=true;
+    scene.add(mainMesh);
+
+    // Wireframe overlay
+    wireMesh=new THREE.LineSegments(
+      new THREE.WireframeGeometry(result.geo),
+      new THREE.LineBasicMaterial({color:0x4488aa,opacity:0.18,transparent:true})
+    );
+    scene.add(wireMesh);
+
+    // Analyse overhangs
+    const euler=new THREE.Euler(0,0,0);
+    const analysis=analyseOverhangs(result.geo, euler);
+
+    // Build overhang mesh
+    ohMesh=buildOverhangMesh(result.geo, analysis);
+    scene.add(ohMesh);
+
+    // Build supports
+    scene.remove(supportGroup);
+    supportGroup=buildSupports(result.geo, euler, analysis);
+    scene.add(supportGroup);
+
+    // Stats
+    const fCount=result.geo.index?result.geo.index.count/3:result.geo.attributes.position.count/3;
+    const total=analysis.crit.length+analysis.warn.length+analysis.safe.length||1;
+    const ohPct=Math.round(analysis.crit.length/total*100);
+
+    // Score all orientations
+    orientData=ORIENTS.map(o=>scoreOrient(result.geo,o.rx,o.ry,o.rz));
+    bestIdx=orientData.reduce((bi,o,i)=>o.score<orientData[bi].score?i:bi,0);
+
+    const supCount=supportGroup.children.filter(c=>c.geometry&&c.geometry.type==='CylinderGeometry'&&c.material&&c.material.color&&c.material.color.getHex()===0x2ecc71).length;
+    const savedVsWorst=Math.round((1-orientData[bestIdx].score/(orientData.reduce((m,o)=>Math.max(m,o.score),0)||1))*100);
+
+    // Update UI
+    document.getElementById('m-oh').textContent=ohPct+'%';
+    document.getElementById('m-oh').className='mv '+(ohPct>50?'red':ohPct>25?'orange':'green');
+    document.getElementById('m-sv').textContent=analysis.crit.length;
+    document.getElementById('m-pw').textContent=Math.max(0,savedVsWorst)+'%';
+    document.getElementById('m-ang').textContent=ORIENTS[bestIdx].name;
+
+    document.getElementById('s-shape').textContent=result.label;
+    document.getElementById('s-verts').textContent=result.geo.attributes.position.count.toLocaleString();
+    document.getElementById('s-faces').textContent=Math.round(fCount).toLocaleString();
+    document.getElementById('s-oh').textContent=analysis.crit.length+' faces';
+    document.getElementById('s-sup').textContent=Math.round(analysis.crit.length/2)+' pillars';
+
+    document.getElementById('ft-safe').textContent=analysis.safe.length;
+    document.getElementById('ft-warn').textContent=analysis.warn.length;
+    document.getElementById('ft-crit').textContent=analysis.crit.length;
+    document.getElementById('ft-sup').textContent=supportGroup.children.length;
+    document.getElementById('ft-total').textContent=Math.round(fCount);
+
+    const risk=ohPct>50?'High risk':ohPct>25?'Moderate risk':'Low risk';
+    const rCol=ohPct>50?'#ff4757':ohPct>25?'#ff9f43':'#2ecc71';
+    document.getElementById('risk-fill').style.width=Math.min(ohPct,100)+'%';
+    document.getElementById('risk-fill').style.background=rCol;
+    document.getElementById('risk-lbl').textContent=risk;
+    document.getElementById('risk-pct').textContent=ohPct+'% overhanging';
+    document.getElementById('status-msg').textContent=`${result.label} — ${Math.round(fCount).toLocaleString()} triangles analysed`;
+
+    // Orient grid
+    buildOrientGrid();
+    buildTips(result.label, ohPct, analysis, savedVsWorst);
+    buildSceneTree(result.label, result.geo, analysis);
+
+    setV('overhang', document.querySelector('.vm:nth-child(3)'));
+    resetCamera();
+    hideLoading();
+  }, 60);
+}
+
+function buildOrientGrid(){
+  const grid=document.getElementById('orient-grid');
+  grid.innerHTML='';
+  orientData.forEach((o,i)=>{
+    const d=document.createElement('div');
+    d.className='ob'+(i===bestIdx?' best':'')+(i===0?' active':'');
+    d.innerHTML=`<div class="ob-v">${o.pct}%</div><div class="ob-l">${ORIENTS[i].name}</div>`;
+    d.onclick=()=>{
+      document.querySelectorAll('.ob').forEach(b=>b.classList.remove('active'));
+      d.classList.add('active');
+      document.getElementById('rx').value=ORIENTS[i].rx;
+      document.getElementById('ry').value=ORIENTS[i].ry;
+      document.getElementById('rz').value=ORIENTS[i].rz;
+      updateMesh();
+    };
+    grid.appendChild(d);
+  });
+}
+
+function buildTips(label, ohPct, analysis, saved){
+  const lines=[
+    {icon:'►', text:`<b style="color:var(--text)">${ORIENTS[bestIdx].name}</b> orientation reduces overhang by ~${Math.max(0,saved)}% — lowest support volume.`},
+    {icon:'►', text:`${analysis.crit.length} critical faces (&gt;${ovhThresh}°) detected. ${analysis.warn.length} marginal faces (35–${ovhThresh}°).`},
+    {icon:'►', text:ohPct<15?'Excellent geometry for metal printing. Minimal support needed.':ohPct<40?'Moderate overhang. Apply best orientation before slicing.':'High overhang ratio. Strongly rotate part and use tree supports.'},
+    {icon:'►', text:`Support type: <b style="color:var(--green)">${supportType}</b>. ${supportType==='tree'?'Tree supports minimise contact area and powder waste.':supportType==='lattice'?'Lattice supports provide thermal conduction with less material.':'Block supports give maximum stability for heavy overhangs.'}`},
+    {icon:'►', text:`Estimated powder saving vs worst orientation: ~${Math.max(5,saved+8)}%.`},
+  ];
+  document.getElementById('tip-box').innerHTML=lines.map(l=>`<div class="tip-line"><span class="tip-icon">${l.icon}</span><span>${l.text}</span></div>`).join('');
+}
+
+function buildSceneTree(label, geo, analysis){
+  const items=[
+    {col:'#3388cc', label, count:geo.attributes.position.count+' verts', active:true},
+    {col:'#4488aa', label:'Wireframe', count:'overlay'},
+    {col:'#ff4757', label:'Overhang zones', count:analysis.crit.length+' tris'},
+    {col:'#2ecc71', label:'Support structures', count:supportGroup.children.length+' obj'},
+    {col:'#555', label:'Build plate', count:'fixed'},
+  ];
+  document.getElementById('tree-items').innerHTML=items.map(it=>`
+    <div class="tree-item${it.active?' active':''}">
+      <div class="tree-icon" style="background:${it.col}"></div>
+      <span class="tree-label">${it.label}</span>
+      <span class="tree-count">${it.count}</span>
+    </div>
+  `).join('');
+}
+
+// ═══════════════════════════════════════════
+//  SCENE MANAGEMENT
+// ═══════════════════════════════════════════
+function clearScene(){
+  [mainMesh,wireMesh,ohMesh].forEach(m=>{if(m){scene.remove(m);}});
+  if(supportGroup) scene.remove(supportGroup);
+  mainMesh=wireMesh=ohMesh=null;
+  supportGroup=new THREE.Group(); scene.add(supportGroup);
+}
+
+function updateMesh(){
+  const sx=+document.getElementById('sx').value;
+  const sy=+document.getElementById('sy').value;
+  const sz=+document.getElementById('sz').value;
+  const rx=+document.getElementById('rx').value*Math.PI/180;
+  const ry=+document.getElementById('ry').value*Math.PI/180;
+  const rz=+document.getElementById('rz').value*Math.PI/180;
+  [mainMesh,wireMesh,ohMesh,supportGroup].forEach(m=>{if(m){m.scale.set(sx,sy,sz);m.rotation.set(rx,ry,rz);}});
+  document.getElementById('sx-v').textContent=sx.toFixed(2);
+  document.getElementById('sy-v').textContent=sy.toFixed(2);
+  document.getElementById('sz-v').textContent=sz.toFixed(2);
+  document.getElementById('rx-v').textContent=Math.round(+document.getElementById('rx').value)+'°';
+  document.getElementById('ry-v').textContent=Math.round(+document.getElementById('ry').value)+'°';
+  document.getElementById('rz-v').textContent=Math.round(+document.getElementById('rz').value)+'°';
+}
+
+function setV(mode,el){
+  vMode=mode;
+  document.querySelectorAll('.vm').forEach(b=>b.classList.remove('on'));
+  if(el)el.classList.add('on');
+  if(mainMesh) mainMesh.visible=(mode==='solid'||mode==='xray');
+  if(wireMesh) wireMesh.visible=(mode==='wire'||mode==='xray');
+  if(ohMesh) ohMesh.visible=(mode==='overhang');
+  if(supportGroup) supportGroup.visible=(mode==='support'||mode==='xray');
+  if(mainMesh&&mode==='xray') mainMesh.material.opacity=0.22, mainMesh.material.transparent=true;
+  else if(mainMesh) mainMesh.material.opacity=0.92, mainMesh.material.transparent=false;
+}
+
+function setSType(t,el){
+  supportType=t;
+  document.querySelectorAll('.st-btn').forEach(b=>b.classList.remove('on'));
+  el.classList.add('on');
+  if(currentGeo) regenerateSupports();
+}
+
+function regenerateSupports(){
+  if(!currentGeo)return;
+  scene.remove(supportGroup);
+  const euler=new THREE.Euler(
+    +document.getElementById('rx').value*Math.PI/180,
+    +document.getElementById('ry').value*Math.PI/180,
+    +document.getElementById('rz').value*Math.PI/180
+  );
+  const analysis=analyseOverhangs(currentGeo,euler);
+  supportGroup=buildSupports(currentGeo,euler,analysis);
+  scene.add(supportGroup);
+  if(vMode==='support') supportGroup.visible=true;
+  document.getElementById('ft-sup').textContent=supportGroup.children.length;
+  buildTips('',parseInt(document.getElementById('m-oh').textContent)||0,analysis,10);
+}
+
+function updateSupDensity(){
+  document.getElementById('sup-density-v').textContent=document.getElementById('sup-density').value;
+  const cv=+document.getElementById('sup-contact').value;
+  document.getElementById('sup-contact-v').textContent=(cv*0.1).toFixed(1)+'mm';
+  if(currentGeo) regenerateSupports();
+}
+
+function updateThresh(){
+  ovhThresh=+document.getElementById('thresh').value;
+  document.getElementById('thresh-v').textContent=ovhThresh+'°';
+}
+
+function updateLayerH(){
+  const v=+document.getElementById('layerh').value;
+  document.getElementById('layerh-v').textContent=(v*10)+'µm';
+  document.getElementById('mt-layer').textContent=(v*10)+'µm';
+}
+
+function applyBest(){
+  document.getElementById('rx').value=ORIENTS[bestIdx].rx;
+  document.getElementById('ry').value=ORIENTS[bestIdx].ry;
+  document.getElementById('rz').value=ORIENTS[bestIdx].rz;
+  updateMesh();
+  regenerateSupports();
+}
+
+function fp(t){ document.getElementById('prompt-box').value=t; }
+function showLoading(msg){ document.getElementById('ld-text').textContent=msg; document.getElementById('loading').classList.add('show'); }
+function hideLoading(){ document.getElementById('loading').classList.remove('show'); }
+
+// ═══════════════════════════════════════════
+//  BOOT
+// ═══════════════════════════════════════════
+init3();
+fp('number 7');
+setTimeout(generate,400);
+</script>
+</body>
+</html>
